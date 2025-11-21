@@ -1,4 +1,6 @@
-// frontend/screens/auth/authAnimations.js
+
+// FULL authAnimations.js (FIXED ESLINT + NEON BORDER ANIMATION)
+
 import { useEffect, useRef } from "react";
 import { Animated, Easing } from "react-native";
 
@@ -27,6 +29,7 @@ export const useAuthCardAnimation = () => {
         useNativeDriver: true,
       }),
     ]).start();
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -88,4 +91,37 @@ export const useCollapseCardAnimation = () => {
   };
 
   return { collapseAnim, collapseCard };
+};
+
+// --------------------------------------------------------
+//  🔥 NEON BORDER ANIMATION (FIXED ESLINT)
+// --------------------------------------------------------
+export const useNeonBorderAnimation = () => {
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 6000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const rotateStyle = {
+    transform: [
+      {
+        rotate: rotateAnim.interpolate({
+          inputRange: [0, 1],
+          outputRange: ["0deg", "360deg"],
+        }),
+      },
+    ],
+  };
+
+  return { rotateStyle };
 };

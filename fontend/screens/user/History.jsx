@@ -1,4 +1,9 @@
-import React, { useState, useContext, useEffect } from "react";
+import React, {
+  useState,
+  useContext,
+  useEffect,
+  useRef,
+} from "react";
 import {
   View,
   Text,
@@ -7,6 +12,7 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
+  Animated,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,29 +24,72 @@ import { AuthContext } from "../../context/AuthContext";
 const API_BASE_URL = "http://192.168.0.103:4000";
 const screenWidth = Dimensions.get("window").width;
 
+/* === Format date helpers === */
+const formatDate = (d) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+
+const formatISO = (iso) => formatDate(new Date(iso));
+
 export default function History() {
   const { activeSession, startSession, resetSession } =
     useContext(WorkoutContext);
   const { userToken } = useContext(AuthContext);
 
   const [checkinData, setCheckinData] = useState({});
-  const [selectedSessions, setSelectedSessions] = useState([]); // nhiều lịch sử trong ngày
+  const [selectedSessions, setSelectedSessions] = useState([]);
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const isTraining = activeSession?.isTraining;
   const startTimeISO = activeSession?.startTime;
 
-  const formatDate = (d) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-      d.getDate()
-    ).padStart(2, "0")}`;
+  /* ========== POPUP ANIMATION STATE ========== */
+  const [showPopup, setShowPopup] = useState(false);
+  const scaleAnim = useRef(new Animated.Value(0.5)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
-  const formatISO = (iso) => formatDate(new Date(iso));
+  const openPopup = () => {
+    setShowPopup(true);
 
-  // 🔄 Load lịch sử từ server, group theo ngày
+    Animated.parallel([
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 6,
+        tension: 60,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const closePopup = (callback) => {
+    Animated.parallel([
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 130,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 0.5,
+        duration: 130,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowPopup(false);
+      if (callback) callback();
+    });
+  };
+
+  /* ========== LOAD HISTORY ========== */
   useEffect(() => {
     if (!userToken) return;
+
     const load = async () => {
       try {
         const res = await axios.get(`${API_BASE_URL}/api/sessions`, {
@@ -52,6 +101,7 @@ export default function History() {
 
         sessions.forEach((s) => {
           const dateStr = formatISO(s.date);
+
           if (!grouped[dateStr]) {
             grouped[dateStr] = {
               marked: true,
@@ -59,6 +109,7 @@ export default function History() {
               sessions: [],
             };
           }
+
           grouped[dateStr].sessions.push({
             _id: s._id,
             duration: s.duration,
@@ -73,77 +124,28 @@ export default function History() {
         console.log("Load sessions error:", err.message);
       }
     };
+
     load();
   }, [userToken]);
 
-  // ⭐ HANDLE START — Popup hỏi Reset/Xoá hay Tiếp tục
+  /* ========== START SESSION BUTTON ========== */
   const handleStart = () => {
-    const demo = ["Squat 4x10", "Bench Press 4x8", "Deadlift 3x5", "Plank 60s"];
+    const demo = ["Squat 4x10", "Bench Press 4x8", "Deadlift 3x5"];
     const todayStr = formatDate(new Date());
     const hasTodayData =
       checkinData[todayStr] && checkinData[todayStr].sessions?.length > 0;
 
     if (hasTodayData) {
-      Alert.alert(
-        "Tiếp tục hay bắt đầu mới?",
-        "Bạn muốn cộng dồn vào buổi tập trước hay reset (xoá hết lịch sử ngày hôm nay) để bắt đầu lại?",
-        [
-          {
-            text: "Tiếp tục (cộng dồn)",
-            onPress: () => {
-              // không xoá backend, chỉ bắt đầu thêm 1 session mới
-              resetSession();
-              startSession(demo);
-              Alert.alert("🏋️ Bắt đầu buổi tập mới (cộng dồn)!");
-            },
-          },
-          {
-            text: "Reset (bắt đầu mới)",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                if (userToken) {
-                  await axios.delete(
-                    `${API_BASE_URL}/api/sessions/by-date/${todayStr}`,
-                    {
-                      headers: { Authorization: `Bearer ${userToken}` },
-                    }
-                  );
-                }
-                // Xoá local ngày hôm nay
-                setCheckinData((prev) => {
-                  const copy = { ...prev };
-                  delete copy[todayStr];
-                  return copy;
-                });
-                if (selectedDay === todayStr) {
-                  setSelectedSessions([]);
-                  setSelectedDay(null);
-                  setSelectedIndex(0);
-                }
-              } catch (err) {
-                console.log("Delete sessions error:", err.message);
-                Alert.alert("Lỗi", "Không xoá được lịch sử trên server.");
-              } finally {
-                resetSession();
-                startSession(demo);
-                Alert.alert("🏋️ Bắt đầu buổi tập mới!");
-              }
-            },
-          },
-          { text: "Hủy", style: "cancel" },
-        ]
-      );
+      openPopup();
       return;
     }
 
-    // Lần đầu trong ngày, chưa có lịch sử
     resetSession();
     startSession(demo);
-    Alert.alert("🏋️ Bắt đầu buổi tập!");
+    Alert.alert("Bắt đầu buổi tập!");
   };
 
-  // ⏹ KẾT THÚC BUỔI TẬP → lưu thêm một session cho ngày hiện tại
+  /* ========== END SESSION SAVE ========== */
   const handleEnd = async () => {
     if (!isTraining || !startTimeISO) return;
 
@@ -161,7 +163,7 @@ export default function History() {
         Array.isArray(activeSession.exercises) && activeSession.exercises.length
           ? activeSession.exercises
           : ["Chưa có danh sách bài tập (demo)."],
-      note: "Buổi tập được ghi vào lịch khi bạn bấm kết thúc.",
+      note: "Buổi tập được lưu khi bạn bấm kết thúc.",
     };
 
     try {
@@ -179,6 +181,7 @@ export default function History() {
           },
           { headers: { Authorization: `Bearer ${userToken}` } }
         );
+
         savedSession = res.data;
       }
 
@@ -190,15 +193,11 @@ export default function History() {
             exercises: savedSession.exercises || [],
             note: savedSession.note || "",
           }
-        : {
-            _id: Math.random().toString(36),
-            ...detail,
-          };
+        : { _id: Math.random().toString(36), ...detail };
 
-      // Cập nhật calendar local: append vào ngày hôm nay
       setCheckinData((prev) => {
         const prevDay = prev[today];
-        if (prevDay && Array.isArray(prevDay.sessions)) {
+        if (prevDay?.sessions) {
           return {
             ...prev,
             [today]: {
@@ -217,13 +216,9 @@ export default function History() {
         };
       });
 
-      // Nếu đang xem đúng ngày hôm nay thì cũng append
-      setSelectedSessions((prev) => {
-        if (selectedDay === today) {
-          return [...prev, sessionObj];
-        }
-        return prev;
-      });
+      if (selectedDay === today) {
+        setSelectedSessions((prev) => [...prev, sessionObj]);
+      }
 
       resetSession();
 
@@ -233,7 +228,7 @@ export default function History() {
       );
     } catch (err) {
       console.log("Create session error:", err.message);
-      Alert.alert("Lỗi", "Không thể lưu buổi tập lên server.");
+      Alert.alert("Lỗi", "Không thể lưu buổi tập.");
       resetSession();
     }
   };
@@ -259,7 +254,6 @@ export default function History() {
           </TouchableOpacity>
         )}
 
-        {/* Calendar */}
         <View style={styles.calendarShadow}>
           <View style={styles.calendarWrapper}>
             <Calendar
@@ -288,7 +282,6 @@ export default function History() {
           </View>
         </View>
 
-        {/* Chi tiết — vuốt ngang giữa các session trong ngày */}
         {selectedSessions.length > 0 && (
           <View style={styles.detailWrapperShadow}>
             <ScrollView
@@ -338,7 +331,6 @@ export default function History() {
               ))}
             </ScrollView>
 
-            {/* chấm nhỏ thể hiện index */}
             <View style={styles.pagination}>
               {selectedSessions.map((_, idx) => (
                 <View
@@ -353,10 +345,87 @@ export default function History() {
           </View>
         )}
       </View>
+
+      {/* ========== POPUP HIGH-END NEON (WITH RESET FIXED) ========== */}
+      {showPopup && (
+        <Animated.View
+          style={[styles.popupOverlay, { opacity: opacityAnim }]}
+        >
+          <Animated.View
+            style={[
+              styles.popupBox,
+              { transform: [{ scale: scaleAnim }] },
+            ]}
+          >
+            <Text style={styles.popupTitle}>Tiếp tục hay bắt đầu mới?</Text>
+
+            {/* TIẾP TỤC */}
+            <TouchableOpacity
+              style={[styles.glowBtn, { backgroundColor: "#00e6b8" }]}
+              onPress={() =>
+                closePopup(() => {
+                  resetSession();
+                  startSession(["demo"]);
+                })
+              }
+            >
+              <Text style={styles.glowBtnDark}>Tiếp tục</Text>
+            </TouchableOpacity>
+
+            {/* RESET — FIXED VERSION */}
+            <TouchableOpacity
+              style={[styles.glowBtn, { backgroundColor: "#ff4d4d" }]}
+              onPress={() =>
+                closePopup(async () => {
+                  try {
+                    const today = formatDate(new Date());
+
+                    // Xoá backend
+                    await axios.delete(
+                      `${API_BASE_URL}/api/sessions/by-date/${today}`,
+                      { headers: { Authorization: `Bearer ${userToken}` } }
+                    );
+
+                    // Xoá local ngay lập tức
+                    setCheckinData((prev) => {
+                      const copy = { ...prev };
+                      delete copy[today];
+                      return copy;
+                    });
+
+                    if (selectedDay === today) {
+                      setSelectedSessions([]);
+                      setSelectedDay(null);
+                      setSelectedIndex(0);
+                    }
+
+                    resetSession();
+                    startSession(["demo"]);
+                  } catch (err) {
+                    console.log("DELETE ERROR:", err.message);
+                    Alert.alert("Lỗi", "Không xoá được lịch hôm nay!");
+                  }
+                })
+              }
+            >
+              <Text style={styles.glowBtnText}>Reset</Text>
+            </TouchableOpacity>
+
+            {/* HỦY */}
+            <TouchableOpacity
+              style={[styles.glowBtn, { backgroundColor: "#333" }]}
+              onPress={() => closePopup()}
+            >
+              <Text style={styles.glowBtnText}>Hủy</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </Animated.View>
+      )}
     </ScrollView>
   );
 }
 
+/* ========== STYLES ========== */
 const styles = StyleSheet.create({
   container: { padding: 20 },
   title: { color: "#fff", fontSize: 28, fontWeight: "700", marginBottom: 20 },
@@ -447,5 +516,64 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     backgroundColor: "#00e6b8",
+  },
+
+  /* ===== POPUP NEON ===== */
+  popupOverlay:
+  {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  popupBox: {
+    width: "80%",
+    padding: 22,
+    borderRadius: 22,
+    backgroundColor: "rgba(10,10,10,0.88)",
+    borderWidth: 1,
+    borderColor: "#00e6b8",
+    shadowColor: "#00e6b8",
+    shadowOpacity: 0.9,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 10,
+    alignItems: "center",
+  },
+
+  popupTitle: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 18,
+  },
+
+  glowBtn: {
+    width: "100%",
+    paddingVertical: 12,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 12,
+    shadowColor: "#00e6b8",
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+  },
+
+  glowBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+   glowBtnDark: {
+    color: "#000",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

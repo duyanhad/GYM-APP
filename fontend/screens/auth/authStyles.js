@@ -4,19 +4,36 @@ import { StyleSheet } from "react-native";
 export const authStyles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#283633ff",
+    backgroundColor: "#1a1a1d",
     justifyContent: "center",
     alignItems: "center",
   },
 
+  /* =========================
+      AUTH CARD + NEON BORDER
+     ========================= */
   card: {
     width: "90%",
-    backgroundColor: "#000000ff",
+   backgroundColor: "#0f0f10",
     padding: 30,
     borderRadius: 30,
     alignItems: "center",
+
+    // ⭐ NEON GLOW
+    borderWidth: 2,
+    borderColor: "#ff4d4d",
+    shadowColor: "#ff4d4d",
+    shadowOpacity: 0.9,
+    shadowRadius: 25,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 14,
+
+    overflow: "hidden", // ĐỂ CHẠY ANIMATION
   },
 
+  /* =========================
+      LOGO
+     ========================= */
   logoWrapper: {
     width: 110,
     height: 110,
@@ -35,6 +52,9 @@ export const authStyles = StyleSheet.create({
     borderRadius: 35,
   },
 
+  /* =========================
+      TEXT
+     ========================= */
   title: {
     fontSize: 28,
     color: "#fff",
@@ -53,6 +73,9 @@ export const authStyles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  /* =========================
+      INPUT
+     ========================= */
   input: {
     width: "100%",
     backgroundColor: "#fff",
@@ -74,6 +97,9 @@ export const authStyles = StyleSheet.create({
     marginLeft: 5,
   },
 
+  /* =========================
+      BUTTON
+     ========================= */
   button: {
     width: "100%",
     backgroundColor: "#e53935",
@@ -91,6 +117,9 @@ export const authStyles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  /* =========================
+      OLD NEON OVERLAY (KEEP)
+     ========================= */
   neonOverlay: {
     position: "absolute",
     top: -5,
@@ -101,6 +130,30 @@ export const authStyles = StyleSheet.create({
     backgroundColor: "#ff4d4d55",
   },
 
+  /* =========================
+      NEW NEON BORDER ANIMATION
+     ========================= */
+  animatedBorder: {
+    position: "absolute",
+    width: "200%",
+    height: "200%",
+    top: "-50%",
+    left: "-50%",
+    borderRadius: 400,
+
+    borderWidth: 5,
+    borderColor: "transparent",
+    borderTopColor: "#ff4d4d",
+    borderRightColor: "#ff1a1a",
+    borderBottomColor: "#d90000",
+    borderLeftColor: "#ff8080",
+
+    opacity: 0.85,
+  },
+
+  /* =========================
+      TEXT LINKS
+     ========================= */
   switchText: {
     color: "#ddd",
     fontSize: 14,
@@ -125,6 +178,9 @@ export const authStyles = StyleSheet.create({
     marginTop: 4,
   },
 
+  /* =========================
+      OTP INPUT
+     ========================= */
   otpRow: {
     flexDirection: "row",
     justifyContent: "space-between",
