@@ -4,14 +4,14 @@ import { StyleSheet } from "react-native";
 export const authStyles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#1b1f20ff",
+    backgroundColor: "#283633ff",
     justifyContent: "center",
     alignItems: "center",
   },
 
   card: {
     width: "90%",
-    backgroundColor: "#000",
+    backgroundColor: "#000000ff",
     padding: 30,
     borderRadius: 30,
     alignItems: "center",

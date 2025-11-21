@@ -44,15 +44,11 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ===== RESEND OTP REGISTER — ĐÃ FIX HOÀN CHỈNH =====
+  // ===== RESEND OTP REGISTER =====
   const resendRegisterOTP = async (email) => {
     try {
       const res = await resendRegisterOTPAPI(email);
-
-      return {
-        ok: true,
-        message: res.data?.message || "Đã gửi lại OTP.",
-      };
+      return { ok: true, message: res.data?.message || "Đã gửi lại OTP." };
     } catch (err) {
       return {
         ok: false,
@@ -62,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ===== LOGIN + OTP =====
+  // ===== LOGIN SEND OTP =====
   const login = async (email, password, navigation) => {
     try {
       await loginSendOTPAPI(email, password);
@@ -76,16 +72,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // ===== CONFIRM LOGIN (ĐÃ FIX HOÀN TOÀN) =====
   const confirmLogin = async (email, otp, navigation) => {
     try {
       const res = await verifyLoginOTPAPI(email, otp);
+
+      // Lưu token vào hệ thống
       setUserToken(res.data.token);
+
+      // Lưu role
       const userRole = res.data.user.role || "user";
       setRole(userRole);
 
-      if (userRole === "admin") navigation.replace("AdminStack");
-      else if (userRole === "coach") navigation.replace("CoachStack");
-      else navigation.replace("UserStack");
+      // ❗ KHÔNG navigation.replace()  — RootNavigator tự chuyển
     } catch (err) {
       Alert.alert(
         "Lỗi xác thực",

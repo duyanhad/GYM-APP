@@ -1,18 +1,21 @@
 // App.js
-import "react-native-gesture-handler"; 
+import "react-native-gesture-handler";
 import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { AuthProvider } from "./context/AuthContext";
+// Contexts
+import { AuthProvider, AuthContext } from "./context/AuthContext";
+import { WorkoutProvider } from "./context/WorkoutContext";
 
+// Navigation
 import AuthStack from "./navigation/AuthStack";
 import UserStack from "./navigation/UserStack";
 import AdminStack from "./navigation/AdminStack";
 import CoachStack from "./navigation/CoachStack";
 
 function RootNavigator() {
-  const { userToken, role } = React.useContext(require("./context/AuthContext").AuthContext);
+  const { userToken, role } = React.useContext(AuthContext);
 
   if (!userToken) return <AuthStack />;
 
@@ -26,9 +29,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
+        {/* Thêm WorkoutProvider ở đây để toàn app sử dụng được */}
+        <WorkoutProvider>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </WorkoutProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

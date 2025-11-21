@@ -8,6 +8,9 @@ const authRoutes = require("./routes/authRoutes");
 const workoutRoutes = require("./routes/workoutRoutes");
 const exerciseRoutes = require("./routes/exerciseRoutes");
 
+// ✅ Thêm dòng này
+const sessionRoutes = require("./routes/sessionRoutes");
+
 const app = express();
 
 // Middleware
@@ -18,6 +21,9 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/workouts", workoutRoutes);
 app.use("/api/exercises", exerciseRoutes);
+
+// ✅ Thêm dòng này
+app.use("/api/sessions", sessionRoutes);
 
 // Connect Mongo
 const MONGO_URI = process.env.MONGO_URI;
