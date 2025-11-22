@@ -288,6 +288,7 @@ export default function History() {
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
+              
               onMomentumScrollEnd={(e) => {
                 const idx = Math.round(
                   e.nativeEvent.contentOffset.x /
@@ -473,14 +474,17 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     marginBottom: 20,
   },
-  detailBox: {
-    backgroundColor: "#0d0d0d",
-    padding: 16,
-    borderRadius: 18,
-    borderColor: "#00e6b8",
-    borderWidth: 1,
-    marginRight: 10,
-  },
+ detailBox: {
+  backgroundColor: "#0d0d0d",
+  padding: 16,
+  borderRadius: 18,
+  borderColor: "#00e6b8",
+  borderWidth: 1,
+  marginHorizontal: 0,
+  width: screenWidth - 40,   // ⭐ Đây mới là FIX CHUẨN!
+  alignSelf: "center",       // ⭐ Cố định vị trí đúng giữa, không lệch
+},
+
 
   closeBtnRed: {
     alignSelf: "center",

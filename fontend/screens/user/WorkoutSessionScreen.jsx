@@ -8,17 +8,19 @@ import {
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import axios from "axios"; // ⭐ THÊM ĐÚNG Ở ĐÂY
 import * as Haptics from "expo-haptics";
 
 import { WorkoutContext } from "../../context/WorkoutContext";
 import { AuthContext } from "../../context/AuthContext";
-import { finishWorkoutSession } from "../../api/workout";
+
+// ❌ XOÁ import cũ finishWorkoutSession
+// import { finishWorkoutSession } from "../../api/workout";
 
 export default function WorkoutSessionScreen({ navigation }) {
   const { activeSession, resetSession } = useContext(WorkoutContext);
   const { userToken } = useContext(AuthContext);
 
-  // 👉 TÁCH ĐIỀU KIỆN RA TRƯỚC — KHÔNG RETURN TRƯỚC HOOK
   const invalidSession =
     !activeSession ||
     !activeSession.isTraining ||
@@ -27,9 +29,7 @@ export default function WorkoutSessionScreen({ navigation }) {
 
   const exerciseList = activeSession?.exercises || [];
 
-  // ================== STATE CHÍNH ==================
   const [progress, setProgress] = useState(exerciseList.map(() => false));
-
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef(null);
 
@@ -37,7 +37,6 @@ export default function WorkoutSessionScreen({ navigation }) {
   const [restTime, setRestTime] = useState(60);
   const restRef = useRef(null);
 
-  // Khởi động stopwatch khi vào màn
   useEffect(() => {
     timerRef.current = setInterval(() => {
       setElapsed((t) => t + 1);
@@ -49,14 +48,12 @@ export default function WorkoutSessionScreen({ navigation }) {
     };
   }, []);
 
-  // format phút:giây
   const formatTime = (sec) => {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
-  // ================== LOGIC TIẾN ĐỘ ==================
   const toggleComplete = (idx) => {
     const updated = [...progress];
     updated[idx] = !updated[idx];
@@ -72,7 +69,6 @@ export default function WorkoutSessionScreen({ navigation }) {
       ? 0
       : Math.round((completedCount / totalExercises) * 100);
 
-  // ================== REST TIMER ==================
   const startRest = () => {
     if (resting) return;
 
@@ -116,33 +112,40 @@ export default function WorkoutSessionScreen({ navigation }) {
               if (timerRef.current) clearInterval(timerRef.current);
               if (restRef.current) clearInterval(restRef.current);
 
+              const durationMinutes = Math.max(Math.floor(elapsed / 60), 1);
+              const calories = durationMinutes * 8;
+
+              const today = new Date();
+              const todayStr = `${today.getFullYear()}-${String(
+                today.getMonth() + 1
+              ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
               const payload = {
-                durationSeconds: elapsed,
-                totalExercises,
-                completedExercises: completedCount,
+                date: todayStr,
+                duration: durationMinutes,
+                calories,
                 exercises: exerciseList,
-                startedAt:
-                  activeSession.startTime || new Date().toISOString(),
+                note: "Buổi tập được lưu khi bạn bấm kết thúc.",
               };
 
-              try {
-                // ⭐ GỌI API MỚI — GỬI TOKEN + PAYLOAD
-                if (userToken) {
-                  await finishWorkoutSession(userToken, payload);
-                } else {
-                  console.log("Không có token, bỏ qua lưu backend");
-                }
-              } catch (e) {
-                console.log("Lưu buổi tập backend lỗi:", e?.message);
+              // ⭐ LƯU ĐÚNG DẠNG API SESSION CỦA HISTORY.JSX
+              if (userToken) {
+                await axios.post(
+                  "http://192.168.0.103:4000/api/sessions",
+                  payload,
+                  { headers: { Authorization: `Bearer ${userToken}` } }
+                );
               }
 
               resetSession();
               Haptics.notificationAsync(
                 Haptics.NotificationFeedbackType.Success
               );
+
               navigation.goBack();
             } catch (e) {
               console.log("Lỗi finish:", e?.message);
+              Alert.alert("Lỗi", "Không thể lưu buổi tập.");
             }
           },
         },
@@ -150,7 +153,7 @@ export default function WorkoutSessionScreen({ navigation }) {
     );
   };
 
-  // 👉 RETURN ĐÚNG LUẬT HOOK
+  // ================== RETURN ==================
   if (invalidSession) {
     return (
       <View style={styles.emptyContainer}>
@@ -165,7 +168,6 @@ export default function WorkoutSessionScreen({ navigation }) {
     );
   }
 
-  // ================== RENDER ==================
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
@@ -227,7 +229,9 @@ export default function WorkoutSessionScreen({ navigation }) {
               onPress={() => toggleComplete(index)}
             >
               <Ionicons
-                name={progress[index] ? "checkbox-outline" : "square-outline"}
+                name={
+                  progress[index] ? "checkbox-outline" : "square-outline"
+                }
                 size={26}
                 color={progress[index] ? "#00ffcc" : "#666"}
               />
@@ -256,7 +260,7 @@ export default function WorkoutSessionScreen({ navigation }) {
   );
 }
 
-/* ================ STYLE Y NHƯ CŨ ================ */
+/* ========================= STYLE ========================= */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
