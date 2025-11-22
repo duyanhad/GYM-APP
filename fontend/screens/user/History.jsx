@@ -114,7 +114,7 @@ export default function History() {
             _id: s._id,
             duration: s.duration,
             calories: s.calories,
-            exercises: s.details || [],   // ⭐ lấy đúng DETAILS
+            exercises: s.details || [],
             note: s.note || "",
           });
         });
@@ -145,7 +145,7 @@ export default function History() {
     Alert.alert("Bắt đầu buổi tập!");
   };
 
-  /* ========== END SESSION SAVE (chỉ dùng cho mode cũ) ========== */
+  /* ========== END SESSION SAVE (mode cũ) ========== */
   const handleEnd = async () => {
     if (!isTraining || !startTimeISO) return;
 
@@ -349,8 +349,8 @@ export default function History() {
                                 marginTop: 2,
                               }}
                             >
-                              Note: {ex.note}
-                            </Text>
+                            Note: {ex.note}
+                          </Text>
                           ) : null}
                         </>
                       )}
@@ -418,27 +418,30 @@ export default function History() {
                   try {
                     const today = formatDate(new Date());
 
-                    // Xoá backend
+                    // ====== XÓA TRÊN BACKEND ======
                     await axios.delete(
                       `${API_BASE_URL}/api/sessions/by-date/${today}`,
                       { headers: { Authorization: `Bearer ${userToken}` } }
                     );
 
-                    // Xoá local ngay lập tức
+                    // ====== XÓA LOCAL ======
                     setCheckinData((prev) => {
                       const copy = { ...prev };
                       delete copy[today];
                       return copy;
                     });
 
+                    // ====== RESET UI ======
                     if (selectedDay === today) {
                       setSelectedSessions([]);
                       setSelectedDay(null);
                       setSelectedIndex(0);
                     }
 
+                    // ====== RESET STATE TẬP LUYỆN ======
                     resetSession();
-                    startSession(["demo"]);
+
+                    Alert.alert("Đã reset!", "Hôm nay chưa tập luyện.");
                   } catch (err) {
                     console.log("DELETE ERROR:", err.message);
                     Alert.alert("Lỗi", "Không xoá được lịch hôm nay!");
