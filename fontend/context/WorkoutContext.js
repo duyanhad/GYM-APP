@@ -17,12 +17,12 @@ export const WorkoutProvider = ({ children }) => {
   const { userToken } = useContext(AuthContext);
 
   const [activeSession, setActiveSession] = useState(defaultSession);
-
-  // (giữ cho bạn nếu sau này muốn dùng)
   const [continueMode, setContinueMode] = useState(false);
+
+  // ⭐ LƯU BUỔI TẬP VỪA KẾT THÚC (để cộng dồn)
   const [lastSession, setLastSession] = useState(null);
 
-  // 🔄 Load session đang chạy
+  // Load session đang chạy
   useEffect(() => {
     const loadSession = async () => {
       try {
@@ -38,15 +38,12 @@ export const WorkoutProvider = ({ children }) => {
     loadSession();
   }, []);
 
-  // 💾 Lưu session
+  // Lưu session
   useEffect(() => {
     const save = async () => {
       try {
         if (activeSession && activeSession.isTraining) {
-          await AsyncStorage.setItem(
-            SESSION_KEY,
-            JSON.stringify(activeSession)
-          );
+          await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(activeSession));
         } else {
           await AsyncStorage.removeItem(SESSION_KEY);
         }
@@ -57,19 +54,32 @@ export const WorkoutProvider = ({ children }) => {
     save();
   }, [activeSession]);
 
-  // ▶ BẮT ĐẦU 1 BUỔI TẬP MỚI (1 segment)
+  // ⭐ BẮT ĐẦU / TIẾP TỤC BUỔI TẬP
   const startSession = (exercises = []) => {
     const now = new Date().toISOString();
-    setActiveSession({
-      isTraining: true,
-      startTime: now,
-      exercises: Array.isArray(exercises) ? exercises : [],
+
+    setActiveSession(prev => {
+      // ➕ Nếu chọn cộng dồn
+      if (continueMode && lastSession) {
+        return {
+          isTraining: true,
+          startTime: lastSession.startTime,      // giữ thời gian cũ
+          exercises: [...lastSession.exercises, ...exercises], // nối bài tập
+        };
+      }
+
+      // ▶ Bắt đầu mới
+      return {
+        isTraining: true,
+        startTime: now,
+        exercises: exercises,
+      };
     });
   };
 
-  // ⏹ RESET BUỔI TẬP ĐANG CHẠY (sau khi kết thúc)
+  // ⭐ RESET BUỔI TẬP — nhưng lưu lại lastSession để popup biết
   const resetSession = () => {
-    setLastSession(activeSession); // lưu lại nếu bạn muốn debug/log
+    setLastSession(activeSession);  // lưu buổi tập cũ
     setActiveSession(defaultSession);
     setContinueMode(false);
   };

@@ -6,9 +6,62 @@ const { verifyToken } = require("../middleware/authMiddleware");
 const router = express.Router();
 
 /**
+ * ============================================
+ * ⭐ MOBILE APP — KẾT THÚC BUỔI TẬP
+ * POST /api/workout/finish
+ * ============================================
+ *
+ * App mobile (WorkoutSessionScreen) gửi:
+ * {
+ *   durationSeconds,
+ *   totalExercises,
+ *   completedExercises,
+ *   exercises,
+ *   startedAt
+ * }
+ */
+router.post("/workout/finish", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const {
+      durationSeconds,
+      totalExercises,
+      completedExercises,
+      exercises,
+      startedAt,
+      calories,
+      note,
+    } = req.body;
+
+    // Convert giây → phút
+    const durationMinutes = Math.round((durationSeconds || 0) / 60);
+
+    const session = await WorkoutSession.create({
+      user: userId,
+      date: new Date(), // thời điểm kết thúc buổi tập
+      startedAt: startedAt ? new Date(startedAt) : undefined,
+      duration: durationMinutes,
+      totalExercises: totalExercises || exercises?.length || 0,
+      completedExercises: completedExercises || 0,
+      exercises: Array.isArray(exercises) ? exercises : [],
+      calories: calories || 0,
+      note: note || "",
+      source: "mobile",
+    });
+
+    res.status(201).json(session);
+  } catch (err) {
+    console.error("Finish workout error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+/**
+ * ============================================
+ * ⭐ WEB / ADMIN — THÊM SESSION THỦ CÔNG
  * POST /api/sessions
- * Body: { date?, duration, calories, exercises, note }
- * -> Lưu 1 buổi tập mới cho user hiện tại
+ * ============================================
  */
 router.post("/", verifyToken, async (req, res) => {
   try {
@@ -22,6 +75,7 @@ router.post("/", verifyToken, async (req, res) => {
       calories: calories || 0,
       exercises: Array.isArray(exercises) ? exercises : [],
       note: note || "",
+      source: "web",
     });
 
     res.status(201).json(session);
@@ -32,8 +86,10 @@ router.post("/", verifyToken, async (req, res) => {
 });
 
 /**
+ * ============================================
+ * ⭐ LẤY DANH SÁCH SESSION (lọc theo ngày)
  * GET /api/sessions?from=YYYY-MM-DD&to=YYYY-MM-DD
- * -> Lấy toàn bộ session của user (có thể lọc theo khoảng ngày)
+ * ============================================
  */
 router.get("/", verifyToken, async (req, res) => {
   try {
@@ -58,8 +114,10 @@ router.get("/", verifyToken, async (req, res) => {
 });
 
 /**
- * GET /api/sessions/by-date/:date (YYYY-MM-DD)
- * -> Lấy TẤT CẢ buổi tập trong 1 ngày (array)
+ * ============================================
+ * ⭐ LẤY BUỔI TẬP THEO NGÀY
+ * GET /api/sessions/by-date/:date
+ * ============================================
  */
 router.get("/by-date/:date", verifyToken, async (req, res) => {
   try {
@@ -96,8 +154,10 @@ router.get("/by-date/:date", verifyToken, async (req, res) => {
 });
 
 /**
- * DELETE /api/sessions/by-date/:date (YYYY-MM-DD)
- * -> Xoá toàn bộ buổi tập trong ngày
+ * ============================================
+ * ⭐ XOÁ BUỔI TẬP THEO NGÀY (dùng khi user bấm RESET)
+ * DELETE /api/sessions/by-date/:date
+ * ============================================
  */
 router.delete("/by-date/:date", verifyToken, async (req, res) => {
   try {
