@@ -39,19 +39,30 @@ const workoutSessionSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // Calories đốt (tạm thời 0 – sau này nếu có công thức thì update)
+    // Calories đốt
     calories: {
       type: Number,
       default: 0,
     },
 
-    // Danh sách bài tập dạng text:
-    // ["Deadlift – 4 x 8 (back)", "Squat – 3 x 12 (legs)", ...]
+    // Danh sách bài tập dạng text
     exercises: [
       {
         type: String,
       },
     ],
+
+    // ⭐⭐⭐ CHỈ SỬA THÊM PHẦN NÀY — KHÔNG SỬA GÌ KHÁC ⭐⭐⭐
+    details: [
+      {
+        name: { type: String },
+        sets: { type: Number },
+        skipped: { type: Boolean },
+        note: { type: String },
+        done: { type: Boolean },
+      },
+    ],
+    // ⭐⭐⭐ HẾT — KHÔNG SỬA GÌ KHÁC ⭐⭐⭐
 
     // Ghi chú
     note: {
@@ -59,7 +70,7 @@ const workoutSessionSchema = new mongoose.Schema(
       default: "",
     },
 
-    // Nguồn tạo buổi tập (web / mobile)
+    // Nguồn tạo buổi tập
     source: {
       type: String,
       enum: ["web", "mobile"],

@@ -10,15 +10,6 @@ const router = express.Router();
  * ⭐ MOBILE APP — KẾT THÚC BUỔI TẬP
  * POST /api/workout/finish
  * ============================================
- *
- * App mobile (WorkoutSessionScreen) gửi:
- * {
- *   durationSeconds,
- *   totalExercises,
- *   completedExercises,
- *   exercises,
- *   startedAt
- * }
  */
 router.post("/workout/finish", verifyToken, async (req, res) => {
   try {
@@ -29,22 +20,26 @@ router.post("/workout/finish", verifyToken, async (req, res) => {
       totalExercises,
       completedExercises,
       exercises,
+      details,        // ⭐ THÊM
       startedAt,
       calories,
       note,
     } = req.body;
 
-    // Convert giây → phút
     const durationMinutes = Math.round((durationSeconds || 0) / 60);
 
     const session = await WorkoutSession.create({
       user: userId,
-      date: new Date(), // thời điểm kết thúc buổi tập
+      date: new Date(),
       startedAt: startedAt ? new Date(startedAt) : undefined,
       duration: durationMinutes,
       totalExercises: totalExercises || exercises?.length || 0,
       completedExercises: completedExercises || 0,
       exercises: Array.isArray(exercises) ? exercises : [],
+      
+      // ⭐⭐ GHÉP CHUẨN — LƯU CHI TIẾT BUỔI TẬP
+      details: Array.isArray(details) ? details : [],
+
       calories: calories || 0,
       note: note || "",
       source: "mobile",
@@ -66,7 +61,14 @@ router.post("/workout/finish", verifyToken, async (req, res) => {
 router.post("/", verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { date, duration, calories, exercises, note } = req.body;
+    const {
+      date,
+      duration,
+      calories,
+      exercises,
+      details,    // ⭐ THÊM
+      note,
+    } = req.body;
 
     const session = await WorkoutSession.create({
       user: userId,
@@ -74,6 +76,10 @@ router.post("/", verifyToken, async (req, res) => {
       duration: duration || 0,
       calories: calories || 0,
       exercises: Array.isArray(exercises) ? exercises : [],
+
+      // ⭐⭐ GHÉP CHUẨN — LƯU CHI TIẾT
+      details: Array.isArray(details) ? details : [],
+
       note: note || "",
       source: "web",
     });
@@ -87,15 +93,15 @@ router.post("/", verifyToken, async (req, res) => {
 
 /**
  * ============================================
- * ⭐ LẤY DANH SÁCH SESSION (lọc theo ngày)
- * GET /api/sessions?from=YYYY-MM-DD&to=YYYY-MM-DD
+ * ⭐ LẤY DANH SÁCH SESSION
+ * GET /api/sessions
  * ============================================
  */
 router.get("/", verifyToken, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { from, to } = req.query;
 
+    const { from, to } = req.query;
     const filter = { user: userId };
 
     if (from || to) {
@@ -155,7 +161,7 @@ router.get("/by-date/:date", verifyToken, async (req, res) => {
 
 /**
  * ============================================
- * ⭐ XOÁ BUỔI TẬP THEO NGÀY (dùng khi user bấm RESET)
+ * ⭐ XOÁ BUỔI TẬP THEO NGÀY
  * DELETE /api/sessions/by-date/:date
  * ============================================
  */
