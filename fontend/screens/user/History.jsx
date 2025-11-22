@@ -114,7 +114,7 @@ export default function History() {
             _id: s._id,
             duration: s.duration,
             calories: s.calories,
-            exercises: s.exercises || [],
+            exercises: s.details || [],   // ⭐ lấy đúng DETAILS
             note: s.note || "",
           });
         });
@@ -145,7 +145,7 @@ export default function History() {
     Alert.alert("Bắt đầu buổi tập!");
   };
 
-  /* ========== END SESSION SAVE ========== */
+  /* ========== END SESSION SAVE (chỉ dùng cho mode cũ) ========== */
   const handleEnd = async () => {
     if (!isTraining || !startTimeISO) return;
 
@@ -282,13 +282,13 @@ export default function History() {
           </View>
         </View>
 
+        {/* ======== SESSION DETAIL ======== */}
         {selectedSessions.length > 0 && (
           <View style={styles.detailWrapperShadow}>
             <ScrollView
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              
               onMomentumScrollEnd={(e) => {
                 const idx = Math.round(
                   e.nativeEvent.contentOffset.x /
@@ -314,10 +314,47 @@ export default function History() {
                   </Text>
 
                   <Text style={styles.detailSub}>🏋 Bài tập:</Text>
+
+                  {/* ---- HIỆN CHI TIẾT CHUẨN ---- */}
                   {s.exercises.map((ex, i) => (
-                    <Text key={i} style={styles.exerciseItem}>
-                      • {ex}
-                    </Text>
+                    <View key={i} style={{ marginBottom: 8 }}>
+                      <Text style={styles.exerciseItem}>• {ex.name}</Text>
+
+                      {ex.skipped ? (
+                        <Text
+                          style={{
+                            color: "#ff5555",
+                            marginLeft: 16,
+                            marginTop: 2,
+                          }}
+                        >
+                          (Đã bỏ qua)
+                        </Text>
+                      ) : (
+                        <>
+                          <Text
+                            style={{
+                              color: "#00e6b8",
+                              marginLeft: 16,
+                              marginTop: 2,
+                            }}
+                          >
+                            Sets: {ex.sets}
+                          </Text>
+                          {ex.note ? (
+                            <Text
+                              style={{
+                                color: "#ffcc66",
+                                marginLeft: 16,
+                                marginTop: 2,
+                              }}
+                            >
+                              Note: {ex.note}
+                            </Text>
+                          ) : null}
+                        </>
+                      )}
+                    </View>
                   ))}
 
                   <Text style={styles.note}>💬 {s.note}</Text>
@@ -347,7 +384,7 @@ export default function History() {
         )}
       </View>
 
-      {/* ========== POPUP HIGH-END NEON (WITH RESET FIXED) ========== */}
+      {/* ======== POPUP ======== */}
       {showPopup && (
         <Animated.View
           style={[styles.popupOverlay, { opacity: opacityAnim }]}
@@ -373,7 +410,7 @@ export default function History() {
               <Text style={styles.glowBtnDark}>Tiếp tục</Text>
             </TouchableOpacity>
 
-            {/* RESET — FIXED VERSION */}
+            {/* RESET */}
             <TouchableOpacity
               style={[styles.glowBtn, { backgroundColor: "#ff4d4d" }]}
               onPress={() =>
@@ -474,17 +511,17 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     marginBottom: 20,
   },
- detailBox: {
-  backgroundColor: "#0d0d0d",
-  padding: 16,
-  borderRadius: 18,
-  borderColor: "#00e6b8",
-  borderWidth: 1,
-  marginHorizontal: 0,
-  width: screenWidth - 40,   // ⭐ Đây mới là FIX CHUẨN!
-  alignSelf: "center",       // ⭐ Cố định vị trí đúng giữa, không lệch
-},
 
+  detailBox: {
+    backgroundColor: "#0d0d0d",
+    padding: 16,
+    borderRadius: 18,
+    borderColor: "#00e6b8",
+    borderWidth: 1,
+    marginHorizontal: 0,
+    width: screenWidth - 40,
+    alignSelf: "center",
+  },
 
   closeBtnRed: {
     alignSelf: "center",
@@ -502,6 +539,7 @@ const styles = StyleSheet.create({
   detailTitle: { color: "#00e6b8", fontSize: 22, fontWeight: "700" },
   detailLine: { color: "#fff", fontSize: 16, marginTop: 8 },
   detailSub: { color: "#fff", fontSize: 17, marginTop: 12, fontWeight: "600" },
+
   exerciseItem: { color: "#ccc", marginLeft: 10, marginTop: 4 },
   note: { color: "#ffcc66", marginTop: 12, fontStyle: "italic" },
 
@@ -522,9 +560,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#00e6b8",
   },
 
-  /* ===== POPUP NEON ===== */
-  popupOverlay:
-  {
+  popupOverlay: {
     position: "absolute",
     top: 0,
     bottom: 0,
@@ -545,7 +581,6 @@ const styles = StyleSheet.create({
     shadowColor: "#00e6b8",
     shadowOpacity: 0.9,
     shadowRadius: 18,
-    shadowOffset: { width: 0, height: 0 },
     elevation: 10,
     alignItems: "center",
   },
@@ -575,7 +610,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-   glowBtnDark: {
+  glowBtnDark: {
     color: "#000",
     fontSize: 16,
     fontWeight: "700",
