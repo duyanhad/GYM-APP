@@ -15,11 +15,14 @@ import {
   TextInput,
   StyleSheet,
   Animated,
+  Image,
 } from "react-native";
+
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { WorkoutContext } from "../../context/WorkoutContext";
+import { AuthContext } from "../../context/AuthContext";
 
 // ======================================================
 // 🔧 CẤU HÌNH (sử dụng cho backend – có thể chỉnh lại sau)
@@ -31,44 +34,34 @@ const PRESET_STORAGE_KEY = "GYM_APP_WORKOUT_PRESETS";
 // ======================================================
 // ⭐ NHÓM CƠ + ICON CHUẨN GYM (ĐÃ THÊM NGỰC + CARDIO)
 // ======================================================
-const MUSCLE_GROUPS = [
-  { key: "legs", label: "Chân", icon: "accessibility-outline" }, // Chân
-  { key: "biceps", label: "Tay trước", icon: "barbell-outline" }, // Tay trước
-  { key: "triceps", label: "Tay sau", icon: "hand-right-outline" }, // Tay sau
-  { key: "shoulders", label: "Vai", icon: "fitness-outline" }, // Vai
-  { key: "back", label: "Lưng", icon: "body-outline" }, // Lưng
-  { key: "waist", label: "Eo", icon: "swap-vertical-outline" }, // Eo
-  { key: "abs", label: "Bụng", icon: "grid-outline" }, // Bụng (6 múi)
-  { key: "chest", label: "Ngực", icon: "heart-circle-outline" }, // Ngực
-  { key: "cardio", label: "Cardio", icon: "flame-outline" }, // Cardio / đốt mỡ
-];
 
-// ======================================================
-// ⭐ DANH SÁCH GỢI Ý BÀI TẬP (tạm thời – sau lấy từ DB)
-// ======================================================
-const SUGGESTED = [
-  "Squat",
-  "Leg Press",
-  "Deadlift",
-  "Bench Press",
-  "Incline Dumbbell Press",
-  "Barbell Row",
-  "Lat Pulldown",
-  "Shoulder Press",
-  "Lateral Raise",
-  "Bicep Curl",
-  "Hammer Curl",
-  "Tricep Pushdown",
-  "Crunch",
-  "Plank",
-  "Russian Twist",
-  "Running",
-  "Skipping",
-  "Push-ups",
+const MUSCLE_GROUPS = [
+  { key: "legs", label: "Chân", image: require("../../assets/legs.png") },
+  {
+    key: "biceps",
+    label: "Tay trước",
+    image: require("../../assets/biceps.png"),
+  },
+  {
+    key: "triceps",
+    label: "Tay sau",
+    image: require("../../assets/triceps.png"),
+  },
+  {
+    key: "shoulders",
+    label: "Vai",
+    image: require("../../assets/shoulders.png"),
+  },
+  { key: "back", label: "Lưng", image: require("../../assets/back.png") },
+  { key: "waist", label: "Eo", image: require("../../assets/waist.png") },
+  { key: "abs", label: "Bụng", image: require("../../assets/abs.png") },
+  { key: "chest", label: "Ngực", image: require("../../assets/chest.png") },
+  { key: "cardio", label: "Cardio", image: require("../../assets/logo.png") },
 ];
 
 export default function WorkoutScreen({ navigation }) {
   const { startSession } = useContext(WorkoutContext);
+  const { userToken } = useContext(AuthContext);
 
   // ======================================================
   // 🧠 STATE CHÍNH: BÀI TẬP THEO TỪNG NHÓM CƠ
@@ -93,6 +86,9 @@ export default function WorkoutScreen({ navigation }) {
   const [newName, setNewName] = useState("");
   const [newReps, setNewReps] = useState("");
   const [newSets, setNewSets] = useState("");
+
+  // ⭐ DANH SÁCH GỢI Ý LẤY TỪ DB
+  const [suggestedFromDB, setSuggestedFromDB] = useState([]);
 
   // Animation popup thêm bài
   const popupOpacity = useRef(new Animated.Value(0)).current;
@@ -185,10 +181,43 @@ export default function WorkoutScreen({ navigation }) {
   // ======================================================
   // 🎯 MỞ / ĐÓNG POPUP THÊM BÀI
   // ======================================================
-  const openPopup = (group) => {
+  const openPopup = async (group) => {
     setSelectedGroup(group);
+
+    // reset input khi mở popup
+    setNewName("");
+    setNewReps("");
+    setNewSets("");
+    setSearch("");
+
     popupOpacity.setValue(0);
     popupScale.setValue(0.85);
+
+    // ⭐ LẤY DANH SÁCH BÀI TẬP TỪ DB THEO NHÓM CƠ
+    try {
+     console.log("🔍 Token gửi lên:", userToken);
+console.log("🔍 URL:", `${API_BASE_URL}/api/exercises?muscleGroup=${group.key}`);
+
+const res = await fetch(
+  `${API_BASE_URL}/api/exercises?muscleGroup=${group.key}`,
+  {
+    headers: {
+      Authorization: `Bearer ${userToken}`,
+      "Content-Type": "application/json",
+    },
+  }
+);
+
+      if (res.ok) {
+        const data = await res.json();
+        setSuggestedFromDB(Array.isArray(data) ? data : []);
+      } else {
+        setSuggestedFromDB([]);
+      }
+    } catch (err) {
+      console.log("❌ Lỗi load bài tập từ DB:", err);
+      setSuggestedFromDB([]);
+    }
 
     Animated.parallel([
       Animated.timing(popupOpacity, {
@@ -223,18 +252,23 @@ export default function WorkoutScreen({ navigation }) {
       setNewReps("");
       setNewSets("");
       setSearch("");
+      setSuggestedFromDB([]);
     });
   };
 
   // ======================================================
-  // 🔎 FILTER GỢI Ý BÀI TẬP THEO SEARCH
+  // 🔎 FILTER GỢI Ý BÀI TẬP THEO SEARCH (LẤY TỪ DB)
   // ======================================================
-  const FILTERED = useMemo(() => {
-    if (search.trim() === "") return SUGGESTED;
-    return SUGGESTED.filter((item) =>
-      item.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [search]);
+ const FILTERED = useMemo(() => {
+
+  const base = suggestedFromDB.map((i) => i.name);   // ⭐ GHÉP THÊM DÒNG NÀY
+
+  if (!search.trim()) return base;
+
+  return base.filter((item) =>
+    item.toLowerCase().includes(search.toLowerCase())
+  );
+}, [search, suggestedFromDB]);
 
   // ======================================================
   // ➕ THÊM BÀI TẬP CHO 1 NHÓM CƠ
@@ -263,7 +297,7 @@ export default function WorkoutScreen({ navigation }) {
   };
 
   // ======================================================
-  // ✅ LỌC NHỮNG NHÓM CƠ ĐÃ CÓ BÀI (ĐỂ HIỂN THỊ DƯỚI)
+  // ✅ LỌC NHỮM CƠ ĐÃ CÓ BÀI (ĐỂ HIỂN THỊ DƯỚI)
   // ======================================================
   const nonEmptyGroups = useMemo(
     () =>
@@ -361,22 +395,21 @@ export default function WorkoutScreen({ navigation }) {
   // ======================================================
   // 🔁 BẮT ĐẦU BUỔI TẬP → GỬI VÀO CONTEXT (LIÊN KẾT ĐIỂM DANH)
   // ======================================================
- const handleStartTraining = () => {
-  const combined = [];
+  const handleStartTraining = () => {
+    const combined = [];
 
-  for (const g in exercises) {
-    exercises[g].forEach((item) => {
-      combined.push(`${item.name} – ${item.sets} x ${item.reps} (${g})`);
-    });
-  }
+    for (const g in exercises) {
+      exercises[g].forEach((item) => {
+        combined.push(`${item.name} – ${item.sets} x ${item.reps} (${g})`);
+      });
+    }
 
-  // 1. Lưu session
-  startSession(combined);
+    // 1. Lưu session
+    startSession(combined);
 
-  // 2. CHUYỂN HƯỚNG
-  navigation.navigate("WorkoutSession");
-};
-
+    // 2. CHUYỂN HƯỚNG
+    navigation.navigate("WorkoutSession");
+  };
 
   // ======================================================
   // 🧩 CRUD: MENU NHỎ + POPUP SỬA BÀI
@@ -459,11 +492,14 @@ export default function WorkoutScreen({ navigation }) {
                 style={styles.neonBox}
                 onPress={() => openPopup(group)}
               >
-                <Ionicons
-                  name={group.icon}
-                  size={26}
-                  color="#00ffcc"
-                  style={{ marginBottom: 6 }}
+                <Image
+                  source={group.image}
+                  style={{
+                    width: 38,
+                    height: 38,
+                    marginBottom: 6,
+                  }}
+                  resizeMode="contain"
                 />
                 <Text style={styles.neonBoxText}>{group.label}</Text>
               </TouchableOpacity>
@@ -634,7 +670,7 @@ export default function WorkoutScreen({ navigation }) {
               }}
             />
 
-            {/* Danh sách gợi ý */}
+            {/* Danh sách gợi ý từ DB */}
             <ScrollView style={{ maxHeight: 200 }}>
               {FILTERED.map((item, idx) => (
                 <TouchableOpacity

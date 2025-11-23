@@ -1,5 +1,9 @@
-import React, { createContext, useState } from "react";
+// src/context/AuthContext.js
+
+import React, { createContext, useState, useEffect } from "react";
 import { Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import {
   registerAPI,
   verifyRegisterAPI,
@@ -17,7 +21,27 @@ export const AuthProvider = ({ children }) => {
   const [userToken, setUserToken] = useState(null);
   const [role, setRole] = useState(null);
 
-  // ===== REGISTER =====
+  // ============================================================
+  // ⭐ LOAD TOKEN KHI APP MỞ LẠI (QUAN TRỌNG)
+  // ============================================================
+  useEffect(() => {
+    const loadToken = async () => {
+      try {
+        const saved = await AsyncStorage.getItem("userToken");
+        if (saved) {
+          setUserToken(saved);
+        }
+      } catch (err) {
+        console.log("Lỗi load token:", err.message);
+      }
+    };
+
+    loadToken();
+  }, []);
+
+  // ============================================================
+  // ⭐ REGISTER
+  // ============================================================
   const register = async (name, phone, email, password, confirm, navigation) => {
     try {
       await registerAPI(name, phone, email, password, confirm);
@@ -34,7 +58,7 @@ export const AuthProvider = ({ children }) => {
   const verifyRegister = async (email, otp, navigation) => {
     try {
       await verifyRegisterAPI(email, otp);
-      Alert.alert("Thành công", "Tài khoản đã được xác thực, hãy đăng nhập.");
+      Alert.alert("Thành công", "Tài khoản đã được xác thực.");
       navigation.navigate("Login");
     } catch (err) {
       Alert.alert(
@@ -44,7 +68,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ===== RESEND OTP REGISTER =====
   const resendRegisterOTP = async (email) => {
     try {
       const res = await resendRegisterOTPAPI(email);
@@ -58,11 +81,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ===== LOGIN SEND OTP =====
+  // ============================================================
+  // ⭐ LOGIN (SEND OTP)
+  // ============================================================
   const login = async (email, password, navigation) => {
     try {
       await loginSendOTPAPI(email, password);
-      Alert.alert("OTP đã gửi", "Vui lòng kiểm tra email và nhập mã.");
+      Alert.alert("OTP đã gửi", "Vui lòng kiểm tra email.");
       navigation.navigate("VerifyLoginOTP", { email });
     } catch (err) {
       Alert.alert(
@@ -72,19 +97,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ===== CONFIRM LOGIN (ĐÃ FIX HOÀN TOÀN) =====
+  // ============================================================
+  // ⭐ CONFIRM LOGIN OTP
+  // ============================================================
   const confirmLogin = async (email, otp, navigation) => {
     try {
       const res = await verifyLoginOTPAPI(email, otp);
 
-      // Lưu token vào hệ thống
-      setUserToken(res.data.token);
+      const token = res.data.token;
 
-      // Lưu role
+      // 1. Lưu vào state
+      setUserToken(token);
+
+      // 2. Lưu vào AsyncStorage
+      await AsyncStorage.setItem("userToken", token);
+
+      // 3. Lưu role
       const userRole = res.data.user.role || "user";
       setRole(userRole);
 
-      // ❗ KHÔNG navigation.replace()  — RootNavigator tự chuyển
+      // Không cần navigation cảnh báo – RootNavigator tự xử lý
     } catch (err) {
       Alert.alert(
         "Lỗi xác thực",
@@ -93,7 +125,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ===== RESEND LOGIN OTP =====
   const resendLoginOTP = async (email) => {
     try {
       const res = await resendLoginOTPAPI(email);
@@ -106,7 +137,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // ===== FORGOT PASSWORD =====
+  // ============================================================
+  // ⭐ FORGOT PASSWORD
+  // ============================================================
   const startForgotPassword = async (email, navigation) => {
     try {
       await forgotPasswordStartAPI(email);
@@ -139,6 +172,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // ============================================================
+  // ⭐ LOGOUT
+  // ============================================================
+  const logout = async () => {
+    setUserToken(null);
+    setRole(null);
+    await AsyncStorage.removeItem("userToken");
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -152,6 +194,7 @@ export const AuthProvider = ({ children }) => {
         resendLoginOTP,
         startForgotPassword,
         verifyForgotPassword,
+        logout,
       }}
     >
       {children}

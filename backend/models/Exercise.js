@@ -52,6 +52,29 @@ const exerciseSchema = new mongoose.Schema(
 
     description: { type: String, default: "" },
 
+    // ⭐ THÊM PHẦN CHI TIẾT CHUYÊN NGHIỆP
+    primaryMuscle: { type: String, default: "" },
+
+    secondaryMuscles: {
+      type: [String],
+      default: []
+    },
+
+    instructions: {
+      type: [String], // từng bước hướng dẫn
+      default: []
+    },
+
+    imageUrl: { type: String, default: "" }, // ảnh minh hoạ
+    videoUrl: { type: String, default: "" }, // video hướng dẫn
+
+    caloriesBurned: { type: Number, default: 0 }, // đốt calo ước tính
+
+    tags: {
+      type: [String], // ví dụ: ["strength", "hypertrophy", "core"]
+      default: []
+    },
+
     isActive: { type: Boolean, default: true },
 
     createdBy: { type: String, default: "seed-advanced" }
